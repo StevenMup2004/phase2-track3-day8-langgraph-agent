@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import json
+import time
+import uuid
 from pathlib import Path
 from typing import Annotated
 
 import typer
-import yaml
+import yaml  # type: ignore[import-untyped]
 
 from .graph import build_graph
 from .metrics import MetricsReport, metric_from_state, summarize_metrics, write_metrics
@@ -17,6 +19,19 @@ from .scenarios import load_scenarios
 from .state import initial_state
 
 app = typer.Typer(no_args_is_help=True)
+
+
+def _state_history_available(graph: object, thread_id: str) -> bool:
+    """Return whether the compiled graph can expose checkpoint history for a run."""
+    get_state_history = getattr(graph, "get_state_history", None)
+    if get_state_history is None:
+        return False
+
+    try:
+        history = get_state_history({"configurable": {"thread_id": thread_id}})
+        return next(iter(history), None) is not None
+    except Exception:
+        return False
 
 
 @app.command("run-scenarios")
@@ -30,12 +45,27 @@ def run_scenarios(
     checkpointer = build_checkpointer(cfg.get("checkpointer", "memory"), cfg.get("database_url"))
     graph = build_graph(checkpointer=checkpointer)
     metrics = []
+    first_thread_id = ""
+    run_id = str(cfg.get("run_id") or uuid.uuid4().hex[:8])
     for scenario in scenarios:
         state = initial_state(scenario)
+        state["thread_id"] = f"{state['thread_id']}-{run_id}"
+        first_thread_id = first_thread_id or state["thread_id"]
         run_config = {"configurable": {"thread_id": state["thread_id"]}}
+        started = time.perf_counter()
         final_state = graph.invoke(state, config=run_config)
-        metrics.append(metric_from_state(final_state, scenario.expected_route.value, scenario.requires_approval))
-    report = summarize_metrics(metrics)
+        latency_ms = max(1, round((time.perf_counter() - started) * 1000))
+        metrics.append(
+            metric_from_state(
+                final_state,
+                scenario.expected_route.value,
+                scenario.requires_approval,
+                latency_ms=latency_ms,
+            )
+        )
+
+    resume_success = bool(first_thread_id and _state_history_available(graph, first_thread_id))
+    report = summarize_metrics(metrics, resume_success=resume_success)
     write_metrics(report, output)
     if cfg.get("report_path"):
         write_report(report, cfg["report_path"])
@@ -50,6 +80,17 @@ def validate_metrics(metrics: Annotated[Path, typer.Option("--metrics")]) -> Non
     if report.total_scenarios < 6:
         raise typer.BadParameter("Expected at least 6 scenarios")
     typer.echo(f"Metrics valid. success_rate={report.success_rate:.2%}")
+
+
+@app.command("export-graph")
+def export_graph(
+    output: Annotated[Path, typer.Option("--output")] = Path("reports/graph.mmd"),
+) -> None:
+    """Export the graph structure as Mermaid text."""
+    graph = build_graph()
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(graph.get_graph().draw_mermaid(), encoding="utf-8")
+    typer.echo(f"Wrote graph diagram to {output}")
 
 
 if __name__ == "__main__":

@@ -1,39 +1,9 @@
-"""Report generation helper."""
-
-from __future__ import annotations
-
-from datetime import UTC, datetime
-from pathlib import Path
-
-from .metrics import MetricsReport, ScenarioMetric
-
-
-def _scenario_row(metric: ScenarioMetric) -> str:
-    return (
-        f"| {metric.scenario_id} | {metric.expected_route} | {metric.actual_route or ''} | "
-        f"{metric.success} | {metric.retry_count} | {metric.interrupt_count} | "
-        f"{metric.approval_observed} | {metric.latency_ms} |"
-    )
-
-
-def render_report(metrics: MetricsReport) -> str:
-    """Return a lab report draft aligned with the grading rubric."""
-    generated_at = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
-    scenario_rows = "\n".join(_scenario_row(item) for item in metrics.scenario_metrics)
-    failed = [item for item in metrics.scenario_metrics if not item.success]
-    failure_summary = (
-        "All sample scenarios passed the route and output checks."
-        if not failed
-        else "Review failed scenarios: " + ", ".join(item.scenario_id for item in failed)
-    )
-
-    return f"""# Day 08 Lab Report
+# Day 08 Lab Report
 
 ## 1. Team / student
 
-- Name:
-- Repo/commit:
-- Date: {generated_at}
+- Name: Vu Hai Dang - 2A202600339
+- Date: 2026-05-11 
 
 ## 2. Architecture
 
@@ -80,22 +50,28 @@ Top-level metrics:
 
 | Metric | Value |
 |---|---:|
-| Total scenarios | {metrics.total_scenarios} |
-| Success rate | {metrics.success_rate:.2%} |
-| Average nodes visited | {metrics.avg_nodes_visited:.2f} |
-| Total retries | {metrics.total_retries} |
-| Total interrupts | {metrics.total_interrupts} |
-| Resume/state-history success | {metrics.resume_success} |
+| Total scenarios | 7 |
+| Success rate | 100.00% |
+| Average nodes visited | 6.43 |
+| Total retries | 3 |
+| Total interrupts | 2 |
+| Resume/state-history success | True |
 
 Per-scenario metrics:
 
 | Scenario | Expected | Actual | Success | Retries | Interrupts | Approval | Latency ms |
 |---|---|---|---:|---:|---:|---:|---:|
-{scenario_rows}
+| S01_simple | simple | simple | True | 0 | 0 | False | 25 |
+| S02_tool | tool | tool | True | 0 | 0 | False | 27 |
+| S03_missing | missing_info | missing_info | True | 0 | 0 | False | 19 |
+| S04_risky | risky | risky | True | 0 | 1 | True | 32 |
+| S05_error | error | error | True | 2 | 0 | False | 33 |
+| S06_delete | risky | risky | True | 0 | 1 | True | 28 |
+| S07_dead_letter | error | error | True | 1 | 0 | False | 16 |
 
 Metrics interpretation:
 
-- {failure_summary}
+- All sample scenarios passed the route and output checks.
 - Retry counts should be non-zero for transient error scenarios.
 - Interrupt counts reflect visits to the approval node for risky scenarios.
 
@@ -135,10 +111,3 @@ demo with `checkpointer: sqlite` and include the checkpoint database path or sta
 With one more day, productionize structured tool outputs first, then replace keyword routing with a
 tested classifier policy, persist dead-letter events to a real queue, and add tracing around every
 node for operational debugging.
-"""
-
-
-def write_report(metrics: MetricsReport, output_path: str | Path) -> None:
-    path = Path(output_path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(render_report(metrics), encoding="utf-8")

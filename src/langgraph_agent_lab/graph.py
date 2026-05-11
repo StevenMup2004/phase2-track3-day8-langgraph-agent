@@ -1,12 +1,13 @@
 """Graph construction.
 
-This module is intentionally import-safe. It imports LangGraph only inside the builder so unit tests
-that check schema/metrics can run even if students are still debugging graph wiring.
+This module is intentionally import-safe. It imports LangGraph only inside the builder
+so unit tests can run while graph wiring is still being debugged.
 """
 
 from __future__ import annotations
 
-from typing import Any
+from collections.abc import Mapping
+from typing import Protocol, cast
 
 from .nodes import (
     answer_node,
@@ -21,11 +22,28 @@ from .nodes import (
     risky_action_node,
     tool_node,
 )
-from .routing import route_after_approval, route_after_classify, route_after_evaluate, route_after_retry
+from .routing import (
+    route_after_approval,
+    route_after_classify,
+    route_after_evaluate,
+    route_after_retry,
+)
 from .state import AgentState
 
 
-def build_graph(checkpointer: Any | None = None):
+class DrawableGraph(Protocol):
+    def draw_mermaid(self) -> str: ...
+
+
+class CompiledGraph(Protocol):
+    def invoke(self, input: object, config: Mapping[str, object] | None = None) -> AgentState: ...
+
+    def get_state_history(self, config: Mapping[str, object]) -> object: ...
+
+    def get_graph(self) -> DrawableGraph: ...
+
+
+def build_graph(checkpointer: object | None = None) -> CompiledGraph:
     """Build and compile the LangGraph workflow.
 
     TODO(student): review the architecture and modify nodes/edges only with a clear reason.
@@ -40,7 +58,8 @@ def build_graph(checkpointer: Any | None = None):
     try:
         from langgraph.graph import END, START, StateGraph
     except Exception as exc:  # pragma: no cover - helpful install error
-        raise RuntimeError("LangGraph is required. Run: pip install -e '.[dev]' or pip install langgraph") from exc
+        message = "LangGraph is required. Run: pip install -e '.[dev]' or pip install langgraph"
+        raise RuntimeError(message) from exc
 
     graph = StateGraph(AgentState)
     graph.add_node("intake", intake_node)
@@ -68,4 +87,4 @@ def build_graph(checkpointer: Any | None = None):
     graph.add_edge("dead_letter", "finalize")
     graph.add_edge("finalize", END)
 
-    return graph.compile(checkpointer=checkpointer)
+    return cast(CompiledGraph, graph.compile(checkpointer=checkpointer))  # type: ignore[arg-type]

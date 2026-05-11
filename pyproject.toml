@@ -11,7 +11,7 @@ requires-python = ">=3.11"
 dependencies = [
   "pydantic>=2.7",
   "PyYAML>=6.0",
-  "rich>=13.7",
+  "rich==13.9.4",
   "typer>=0.12",
   "langgraph>=0.3.0",
 ]
@@ -22,8 +22,11 @@ dev = [
   "pytest-cov>=5.0",
   "ruff>=0.5.0",
   "mypy>=1.10",
+  "langgraph-checkpoint-sqlite>=2.0",
+  "streamlit==1.40.0",
 ]
 sqlite = ["langgraph-checkpoint-sqlite>=2.0"]
+ui = ["streamlit==1.40.0"]
 postgres = ["langgraph-checkpoint-postgres>=2.0"]
 
 [project.scripts]

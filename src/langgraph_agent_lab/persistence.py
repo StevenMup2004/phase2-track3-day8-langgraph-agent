@@ -2,13 +2,24 @@
 
 from __future__ import annotations
 
-from typing import Any
+import importlib
+import sqlite3
+from pathlib import Path
 
 
-def build_checkpointer(kind: str = "memory", database_url: str | None = None) -> Any | None:
+def _sqlite_path(database_url: str | None) -> str:
+    if not database_url:
+        return "checkpoints.db"
+    if database_url.startswith("sqlite:///"):
+        return database_url.removeprefix("sqlite:///")
+    if database_url.startswith("sqlite://"):
+        return database_url.removeprefix("sqlite://")
+    return database_url
+
+
+def build_checkpointer(kind: str = "memory", database_url: str | None = None) -> object | None:
     """Return a LangGraph checkpointer.
 
-    TODO(student): add SQLite/Postgres support for the extension track.
     The starter uses MemorySaver so the lab can run without infrastructure.
     """
     if kind == "none":
@@ -21,12 +32,26 @@ def build_checkpointer(kind: str = "memory", database_url: str | None = None) ->
         try:
             from langgraph.checkpoint.sqlite import SqliteSaver
         except ImportError as exc:
-            raise RuntimeError("SQLite checkpointer requires: pip install langgraph-checkpoint-sqlite") from exc
-        return SqliteSaver.from_conn_string(database_url or "checkpoints.db")
+            message = "SQLite checkpointer requires: pip install langgraph-checkpoint-sqlite"
+            raise RuntimeError(message) from exc
+
+        db_path = _sqlite_path(database_url)
+        if db_path != ":memory:":
+            Path(db_path).parent.mkdir(parents=True, exist_ok=True)
+        conn = sqlite3.connect(db_path, check_same_thread=False)
+        if db_path != ":memory:":
+            conn.execute("PRAGMA journal_mode=WAL")
+        saver = SqliteSaver(conn=conn)
+        setup = getattr(saver, "setup", None)
+        if callable(setup):
+            setup()
+        return saver
     if kind == "postgres":
         try:
-            from langgraph.checkpoint.postgres import PostgresSaver
+            module = importlib.import_module("langgraph.checkpoint.postgres")
         except ImportError as exc:
-            raise RuntimeError("Postgres checkpointer requires: pip install langgraph-checkpoint-postgres") from exc
-        return PostgresSaver.from_conn_string(database_url or "")
+            message = "Postgres checkpointer requires: pip install langgraph-checkpoint-postgres"
+            raise RuntimeError(message) from exc
+        postgres_saver = module.PostgresSaver  # type: ignore[attr-defined]
+        return postgres_saver.from_conn_string(database_url or "")
     raise ValueError(f"Unknown checkpointer kind: {kind}")

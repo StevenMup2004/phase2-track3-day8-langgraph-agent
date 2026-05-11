@@ -1,4 +1,4 @@
-.PHONY: install test lint typecheck run-scenarios grade-local clean
+.PHONY: install test lint typecheck run-scenarios run-scenarios-sqlite run-ui graph-diagram grade-local clean
 
 install:
 	pip install -e '.[dev]'
@@ -14,6 +14,15 @@ typecheck:
 
 run-scenarios:
 	python -m langgraph_agent_lab.cli run-scenarios --config configs/lab.yaml --output outputs/metrics.json
+
+run-scenarios-sqlite:
+	python -m langgraph_agent_lab.cli run-scenarios --config configs/lab.sqlite.yaml --output outputs/metrics.json
+
+run-ui:
+	streamlit run streamlit_app.py
+
+graph-diagram:
+	python -m langgraph_agent_lab.cli export-graph --output reports/graph.mmd
 
 grade-local:
 	python -m langgraph_agent_lab.cli validate-metrics --metrics outputs/metrics.json
