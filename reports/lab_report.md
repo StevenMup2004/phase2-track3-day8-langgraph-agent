@@ -2,7 +2,8 @@
 
 ## 1. Team / student
 
-- Name: Vu Hai Dang - 2A202600339
+- Name: Vu Hai Dang 
+- Repo/commit: https://github.com/StevenMup2004/phase2-track3-day8-langgraph-agent
 - Date: 2026-05-11 
 
 ## 2. Architecture
@@ -61,13 +62,13 @@ Per-scenario metrics:
 
 | Scenario | Expected | Actual | Success | Retries | Interrupts | Approval | Latency ms |
 |---|---|---|---:|---:|---:|---:|---:|
-| S01_simple | simple | simple | True | 0 | 0 | False | 25 |
-| S02_tool | tool | tool | True | 0 | 0 | False | 27 |
-| S03_missing | missing_info | missing_info | True | 0 | 0 | False | 19 |
-| S04_risky | risky | risky | True | 0 | 1 | True | 32 |
-| S05_error | error | error | True | 2 | 0 | False | 33 |
-| S06_delete | risky | risky | True | 0 | 1 | True | 28 |
-| S07_dead_letter | error | error | True | 1 | 0 | False | 16 |
+| S01_simple | simple | simple | True | 0 | 0 | False | 29 |
+| S02_tool | tool | tool | True | 0 | 0 | False | 22 |
+| S03_missing | missing_info | missing_info | True | 0 | 0 | False | 13 |
+| S04_risky | risky | risky | True | 0 | 1 | True | 23 |
+| S05_error | error | error | True | 2 | 0 | False | 30 |
+| S06_delete | risky | risky | True | 0 | 1 | True | 24 |
+| S07_dead_letter | error | error | True | 1 | 0 | False | 17 |
 
 Metrics interpretation:
 

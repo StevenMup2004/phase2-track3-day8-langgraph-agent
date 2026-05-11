@@ -89,7 +89,9 @@ def ask_clarification_node(state: AgentState) -> dict:
 def tool_node(state: AgentState) -> dict:
     """Call a mock tool and simulate transient failures for error-route scenarios."""
     attempt = int(state.get("attempt", 0))
-    if state.get("route") == Route.ERROR.value and attempt < 2:
+    max_attempts = int(state.get("max_attempts", 3))
+    last_recoverable_attempt = max(max_attempts - 1, 1)
+    if state.get("route") == Route.ERROR.value and attempt < last_recoverable_attempt:
         result = (
             f"ERROR: transient failure attempt={attempt} "
             f"scenario={state.get('scenario_id', 'unknown')}"
